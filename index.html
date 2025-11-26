@@ -658,7 +658,7 @@
             }
 
             // CSV 헤더
-            const headers = ['번호', '주문일시', '이름', '연락처', '주소', '수량', '금액'];
+            const headers = ['번호', '주문일시', '이름', '연락처', '주소', '수량', '금액', '입금확인'];
 
             // CSV 데이터 생성
             const csvRows = [headers.join(',')];
@@ -672,7 +672,8 @@
                     `"${order.phone || ''}"`,
                     `"${(order.address || '').replace(/"/g, '""')}"`,
                     order.quantity || 0,
-                    order.total_price || 0
+                    order.total_price || 0,
+                    order.is_paid ? 'O' : 'X'
                 ];
                 csvRows.push(row.join(','));
             });
