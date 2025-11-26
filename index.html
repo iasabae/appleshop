@@ -327,18 +327,10 @@
             renderOrderList(orders);
         }
 
-        // 이름/주소 마스킹 함수
+        // 이름 마스킹 함수
         function maskName(name) {
             if (!name || name.length === 0) return '***';
-            if (name.length === 1) return '*';
-            if (name.length === 2) return name[0] + '*';
-            return name[0] + '*'.repeat(name.length - 2) + name[name.length - 1];
-        }
-
-        function maskAddress(address) {
-            if (!address || address.length === 0) return '***';
-            if (address.length <= 5) return '*'.repeat(address.length);
-            return address.substring(0, 3) + '*'.repeat(Math.min(address.length - 5, 10)) + address.substring(address.length - 2);
+            return name[0] + '**';
         }
 
         function renderOrderList(orders) {
@@ -355,7 +347,6 @@
                 // 여기선 간단하게 처리
                 const displayDate = order.created_at ? new Date(order.created_at).toLocaleDateString() : '날짜정보없음';
                 const maskedName = maskName(order.name);
-                const maskedAddress = maskAddress(order.address);
 
                 const li = document.createElement('li');
                 li.className = 'bg-white border border-gray-200 rounded p-3 shadow-sm hover:border-g-green transition';
@@ -370,7 +361,7 @@
                         </div>
                         <div class="flex-1">
                             <h3 class="font-bold text-gray-800 text-sm mb-1">충북 제천 꿀사과 10kg</h3>
-                            <p class="text-xs text-gray-500 mb-1">받는분: ${maskedName} | ${maskedAddress}</p>
+                            <p class="text-xs text-gray-500 mb-1">주문자: ${maskedName}님</p>
                             <div class="flex justify-between items-center mt-2">
                                 <span class="text-xs bg-red-50 text-red-500 px-1 rounded border border-red-100">${order.quantity}박스</span>
                                 <span class="font-bold text-gray-800">${parseInt(order.total_price || 0).toLocaleString()}원</span>
