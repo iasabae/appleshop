@@ -86,9 +86,14 @@
             <div class="p-4">
                 <div class="flex justify-between items-center mb-4">
                     <h3 class="font-bold">전체 주문 내역</h3>
-                    <button onclick="loadAdminOrders()" class="text-xs bg-gray-100 px-3 py-1 rounded text-gray-600 hover:bg-gray-200">
-                        <i class="fa-solid fa-rotate-right"></i> 새로고침
-                    </button>
+                    <div class="flex gap-2">
+                        <button onclick="downloadCSV()" class="text-xs bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600">
+                            <i class="fa-solid fa-download"></i> CSV 다운로드
+                        </button>
+                        <button onclick="loadAdminOrders()" class="text-xs bg-gray-100 px-3 py-1 rounded text-gray-600 hover:bg-gray-200">
+                            <i class="fa-solid fa-rotate-right"></i> 새로고침
+                        </button>
+                    </div>
                 </div>
                 <div id="adminOrderList" class="space-y-3">
                     <!-- 관리자 주문 목록 -->
@@ -484,6 +489,7 @@
                 orders = JSON.parse(localStorage.getItem('appleOrders')) || [];
             }
 
+            adminOrders = orders; // CSV 다운로드용 데이터 저장
             renderAdminOrderList(orders);
         }
 
@@ -540,6 +546,67 @@
                 `;
                 listElement.appendChild(div);
             });
+        }
+
+        // CSV 다운로드 함수
+        let adminOrders = []; // 관리자 주문 데이터 저장용
+
+        async function downloadCSV() {
+            // 데이터가 없으면 먼저 로드
+            if (adminOrders.length === 0) {
+                if (supabase) {
+                    const { data, error } = await supabase
+                        .from(TABLE_NAME)
+                        .select('*')
+                        .order('created_at', { ascending: false });
+                    if (!error && data) {
+                        adminOrders = data;
+                    }
+                }
+                if (adminOrders.length === 0) {
+                    adminOrders = JSON.parse(localStorage.getItem('appleOrders')) || [];
+                }
+            }
+
+            if (adminOrders.length === 0) {
+                alert('다운로드할 주문 내역이 없습니다.');
+                return;
+            }
+
+            // CSV 헤더
+            const headers = ['번호', '주문일시', '이름', '연락처', '주소', '수량', '금액'];
+
+            // CSV 데이터 생성
+            const csvRows = [headers.join(',')];
+
+            adminOrders.forEach((order, index) => {
+                const orderDate = order.created_at ? new Date(order.created_at).toLocaleString() : '';
+                const row = [
+                    adminOrders.length - index,
+                    `"${orderDate}"`,
+                    `"${order.name || ''}"`,
+                    `"${order.phone || ''}"`,
+                    `"${(order.address || '').replace(/"/g, '""')}"`,
+                    order.quantity || 0,
+                    order.total_price || 0
+                ];
+                csvRows.push(row.join(','));
+            });
+
+            // BOM 추가 (한글 깨짐 방지)
+            const BOM = '\uFEFF';
+            const csvContent = BOM + csvRows.join('\n');
+
+            // 다운로드
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `윤서마켓_주문내역_${new Date().toISOString().slice(0,10)}.csv`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
         }
 
     </script>
