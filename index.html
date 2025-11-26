@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>윤서마켓 | 산지직송 꿀사과</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Supabase JS -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap');
+        
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+            background-color: #f4f4f4;
+        }
+        
+        /* 지마켓 느낌의 포인트 컬러 */
+        .g-green { color: #00d33b; }
+        .bg-g-green { background-color: #00d33b; }
+        .border-g-green { border-color: #00d33b; }
+        
+        .g-navy { color: #2e303d; }
+        
+        /* 할인 배지 스타일 */
+        .discount-badge {
+            background: linear-gradient(135deg, #ff4e50 0%, #f9d423 100%);
+            color: white;
+        }
+
+        /* 수량 조절 버튼 제거 (브라우저 기본 스타일) */
+        input[type=number]::-webkit-inner-spin-button, 
+        input[type=number]::-webkit-outer-spin-button { 
+            -webkit-appearance: none; 
+            margin: 0; 
+        }
+
+        /* 모바일 최적화 */
+        .container-width {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- 헤더 -->
+    <header class="bg-white sticky top-0 z-50 shadow-sm">
+        <div class="container-width px-4 py-3 flex justify-between items-center">
+            <h1 class="text-xl font-bold flex items-center gap-2">
+                <span class="g-green text-2xl"><i class="fa-solid fa-leaf"></i></span>
+                <span class="g-navy">윤서마켓</span>
+            </h1>
+            <button onclick="openAdminModal()" class="text-xs text-gray-400 hover:text-gray-600">
+                <i class="fa-solid fa-gear"></i>
+            </button>
+        </div>
+    </header>
+
+    <!-- 관리자 비밀번호 모달 -->
+    <div id="adminModal" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center">
+        <div class="bg-white rounded-lg p-6 w-80 shadow-xl">
+            <h3 class="text-lg font-bold mb-4">관리자 로그인</h3>
+            <input type="password" id="adminPassword" placeholder="비밀번호 입력"
+                   class="w-full border border-gray-300 rounded px-3 py-2 mb-4 focus:outline-none focus:border-g-green">
+            <div class="flex gap-2">
+                <button onclick="closeAdminModal()" class="flex-1 bg-gray-200 text-gray-700 py-2 rounded hover:bg-gray-300">취소</button>
+                <button onclick="checkAdminPassword()" class="flex-1 bg-g-green text-white py-2 rounded hover:bg-green-600">확인</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 관리자 페이지 모달 -->
+    <div id="adminPage" class="fixed inset-0 bg-gray-100 z-50 hidden overflow-y-auto">
+        <div class="container-width bg-white min-h-screen">
+            <div class="sticky top-0 bg-white border-b p-4 flex justify-between items-center">
+                <h2 class="text-lg font-bold"><i class="fa-solid fa-lock text-g-green"></i> 관리자 페이지</h2>
+                <button onclick="closeAdminPage()" class="text-gray-500 hover:text-gray-700">
+                    <i class="fa-solid fa-xmark text-xl"></i>
+                </button>
+            </div>
+            <div class="p-4">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="font-bold">전체 주문 내역</h3>
+                    <button onclick="loadAdminOrders()" class="text-xs bg-gray-100 px-3 py-1 rounded text-gray-600 hover:bg-gray-200">
+                        <i class="fa-solid fa-rotate-right"></i> 새로고침
+                    </button>
+                </div>
+                <div id="adminOrderList" class="space-y-3">
+                    <!-- 관리자 주문 목록 -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 상품 이미지 및 정보 -->
+    <main class="container-width">
+        <!-- 상품 배너 -->
+        <div class="bg-white mb-2">
+            <div class="relative w-full h-64 bg-gray-200 overflow-hidden">
+                <!-- 사과 이미지 (외부 URL) -->
+                <img src="https://images.unsplash.com/photo-1560806887-1e4cd0b6cbd6?q=80&w=1000&auto=format&fit=crop" 
+                     alt="꿀사과" class="w-full h-full object-cover">
+                <div class="absolute bottom-0 left-0 w-full bg-gradient-to-t from-black/60 to-transparent p-4">
+                    <span class="bg-red-600 text-white text-xs font-bold px-2 py-1 rounded">BEST</span>
+                    <p class="text-white font-bold text-lg mt-1">경북 청송 꿀사과 10kg</p>
+                </div>
+            </div>
+            
+            <div class="p-4 border-b border-gray-100">
+                <div class="flex items-end gap-2 mb-2">
+                    <span class="text-gray-400 line-through text-lg">100,000원</span>
+                    <span class="text-2xl font-bold text-gray-800">80,000</span>
+                    <span class="text-sm font-bold">원</span>
+                    <span class="text-red-500 font-bold text-sm mb-1 ml-1">20% 할인</span>
+                </div>
+                <div class="flex gap-2 text-xs text-gray-500 mb-3">
+                    <span class="border px-1 rounded text-blue-600 border-blue-200">스마일배송</span>
+                    <span class="border px-1 rounded text-green-600 border-green-200">무료배송</span>
+                </div>
+                <div class="bg-gray-50 p-3 rounded text-sm text-gray-600">
+                    <p>🚚 <strong>입금순으로 순차 배송됩니다.</strong></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- 주문 폼 -->
+        <div class="bg-white p-4 mb-2 shadow-sm">
+            <h2 class="text-lg font-bold mb-4 border-b pb-2">주문 정보 입력</h2>
+            
+            <form id="orderForm" class="space-y-4">
+                <!-- 이름 -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">받는 분 성함 <span class="text-red-500">*</span></label>
+                    <input type="text" id="userName" required placeholder="홍길동" 
+                           class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:border-g-green transition">
+                </div>
+
+                <!-- 주소 -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">배송지 주소 <span class="text-red-500">*</span></label>
+                    <input type="text" id="userAddress" required placeholder="주소를 입력해주세요 (예: 서울시 강남구 강남대로 123, 101호)"
+                           class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:border-g-green transition">
+                </div>
+
+                <!-- 수량 선택 -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">박스 수량 (10kg) <span class="text-red-500">*</span></label>
+                    <div class="flex items-center border border-gray-300 rounded w-full max-w-[150px]">
+                        <button type="button" onclick="changeQty(-1)" class="px-3 py-2 bg-gray-100 hover:bg-gray-200 border-r text-gray-600">-</button>
+                        <input type="number" id="boxQty" value="1" min="1" max="99" class="w-full text-center font-bold focus:outline-none" readonly>
+                        <button type="button" onclick="changeQty(1)" class="px-3 py-2 bg-gray-100 hover:bg-gray-200 border-l text-gray-600">+</button>
+                    </div>
+                    <p class="text-right font-bold mt-2 text-lg text-gray-800">
+                        총 금액: <span id="totalPrice" class="text-red-500">80,000</span>원
+                    </p>
+                </div>
+
+                <!-- 구매 버튼 -->
+                <button type="submit" 
+                        class="w-full bg-g-green hover:bg-green-600 text-white font-bold py-4 rounded shadow-md text-lg transition duration-200 mt-4 flex justify-center items-center gap-2">
+                    <i class="fa-solid fa-check"></i> 주문 신청하기
+                </button>
+            </form>
+        </div>
+
+        <!-- 주문 내역 (로컬 + Supabase 데이터) -->
+        <div class="bg-white p-4 shadow-sm">
+            <div class="flex justify-between items-center mb-4 border-b pb-2">
+                <h2 class="text-lg font-bold">최근 주문 내역</h2>
+                <div class="flex gap-2">
+                    <button onclick="refreshOrders()" class="text-xs bg-gray-100 px-2 py-1 rounded text-gray-600 hover:bg-gray-200"><i class="fa-solid fa-rotate-right"></i> 새로고침</button>
+                    <button onclick="clearLocalHistory()" class="text-xs bg-gray-100 px-2 py-1 rounded text-gray-600 hover:bg-gray-200">기록 삭제</button>
+                </div>
+            </div>
+            
+            <!-- 리스트 영역 -->
+            <ul id="orderList" class="space-y-3">
+                <!-- JS로 동적 추가됨 -->
+                <li class="text-center py-8 text-gray-400 text-sm bg-gray-50 rounded">
+                    아직 주문 내역이 없습니다.
+                </li>
+            </ul>
+        </div>
+        
+    </main>
+
+
+    <script>
+        // ==========================================
+        // 1. Supabase 설정 (사용자 키 입력 필요)
+        // ==========================================
+        const SUPABASE_URL = 'https://xrxzzsybrargiwlwvicd.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhyeHp6c3licmFyZ2l3bHd2aWNkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQxMzI5NjIsImV4cCI6MjA3OTcwODk2Mn0.JnId2mbY9LAkiwVs5qKOz2ZZgqD5HJto1sWs8_uuosA';
+        const TABLE_NAME = 'apple_orders'; // Supabase 테이블 이름
+
+        let supabase = null;
+        if (SUPABASE_URL && SUPABASE_KEY) {
+            supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+            console.log("Supabase Client initialized.");
+        } else {
+            console.warn("Supabase 키가 설정되지 않았습니다. 로컬 스토리지 모드로 동작합니다.");
+        }
+
+        // ==========================================
+        // 2. 가격 계산 및 UI 로직
+        // ==========================================
+        const UNIT_PRICE = 80000;
+        const qtyInput = document.getElementById('boxQty');
+        const priceDisplay = document.getElementById('totalPrice');
+
+        function changeQty(amount) {
+            let currentQty = parseInt(qtyInput.value);
+            let newQty = currentQty + amount;
+            if (newQty < 1) newQty = 1;
+            if (newQty > 99) newQty = 99;
+            
+            qtyInput.value = newQty;
+            updatePrice(newQty);
+        }
+
+        function updatePrice(qty) {
+            const total = qty * UNIT_PRICE;
+            priceDisplay.innerText = total.toLocaleString();
+        }
+
+        // ==========================================
+        // 3. 데이터 저장 및 불러오기 로직
+        // ==========================================
+        
+        // 초기 로딩
+        document.addEventListener('DOMContentLoaded', () => {
+            loadOrders();
+        });
+
+        document.getElementById('orderForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            // 1. 폼 데이터 수집
+            const name = document.getElementById('userName').value;
+            const address = document.getElementById('userAddress').value;
+            const qty = parseInt(document.getElementById('boxQty').value);
+            const totalPrice = qty * UNIT_PRICE;
+            const date = new Date().toLocaleString();
+            
+            const newOrder = {
+                id: Date.now(), // 로컬용 유니크 ID
+                name: name,
+                address: address,
+                quantity: qty,
+                total_price: totalPrice,
+                created_at: date
+            };
+
+            // 2. 저장 실행
+            if (confirm(`${name}님, 총 ${qty}박스 주문하시겠습니까?`)) {
+                await saveOrder(newOrder);
+                alert("주문이 완료되었습니다!");
+                document.getElementById('orderForm').reset();
+                qtyInput.value = 1;
+                updatePrice(1);
+                loadOrders(); // 목록 갱신
+            }
+        });
+
+        // 주문 저장 함수 (로컬 + Supabase)
+        async function saveOrder(orderData) {
+            // A. 로컬 스토리지 저장 (무조건 실행)
+            const localOrders = JSON.parse(localStorage.getItem('appleOrders')) || [];
+            localOrders.unshift(orderData); // 최신순
+            localStorage.setItem('appleOrders', JSON.stringify(localOrders));
+
+            // B. Supabase 저장 (키가 있을 경우에만)
+            if (supabase) {
+                try {
+                    const { data, error } = await supabase
+                        .from(TABLE_NAME)
+                        .insert([
+                            { 
+                                name: orderData.name, 
+                                address: orderData.address, 
+                                quantity: orderData.quantity,
+                                total_price: orderData.total_price
+                            }
+                        ]);
+                    
+                    if (error) {
+                        console.error('Supabase Error:', error);
+                        // 에러가 나도 로컬에는 저장되었으므로 사용자 흐름은 끊지 않음
+                    } else {
+                        console.log('Supabase Saved:', data);
+                    }
+                } catch (err) {
+                    console.error('Supabase Connection Error:', err);
+                }
+            }
+        }
+
+        // 주문 불러오기 함수
+        async function loadOrders() {
+            const listElement = document.getElementById('orderList');
+            listElement.innerHTML = '<li class="text-center py-4"><i class="fa-solid fa-spinner fa-spin text-green-500"></i> 불러오는 중...</li>';
+
+            let orders = [];
+
+            // A. Supabase 우선 시도
+            if (supabase) {
+                const { data, error } = await supabase
+                    .from(TABLE_NAME)
+                    .select('*')
+                    .order('created_at', { ascending: false });
+                
+                if (!error && data) {
+                    orders = data;
+                }
+            }
+
+            // B. Supabase 데이터가 없거나 연결 실패 시 로컬 스토리지 사용
+            if (orders.length === 0) {
+                orders = JSON.parse(localStorage.getItem('appleOrders')) || [];
+            }
+
+            renderOrderList(orders);
+        }
+
+        function renderOrderList(orders) {
+            const listElement = document.getElementById('orderList');
+            listElement.innerHTML = '';
+
+            if (orders.length === 0) {
+                listElement.innerHTML = '<li class="text-center py-8 text-gray-400 text-sm bg-gray-50 rounded">주문 내역이 없습니다.</li>';
+                return;
+            }
+
+            orders.forEach(order => {
+                // Supabase 데이터의 created_at은 ISO string일 수 있으므로 포맷팅 처리 필요할 수 있음
+                // 여기선 간단하게 처리
+                const displayDate = order.created_at ? new Date(order.created_at).toLocaleDateString() : '날짜정보없음';
+                
+                const li = document.createElement('li');
+                li.className = 'bg-white border border-gray-200 rounded p-3 shadow-sm hover:border-g-green transition';
+                li.innerHTML = `
+                    <div class="flex justify-between items-start mb-2">
+                        <span class="bg-gray-100 text-gray-600 text-xs px-2 py-1 rounded font-bold">${displayDate}</span>
+                        <span class="text-g-green font-bold text-sm">주문완료</span>
+                    </div>
+                    <div class="flex gap-3">
+                        <div class="w-16 h-16 bg-gray-200 rounded overflow-hidden flex-shrink-0">
+                             <img src="https://images.unsplash.com/photo-1560806887-1e4cd0b6cbd6?q=80&w=200&auto=format&fit=crop" class="w-full h-full object-cover">
+                        </div>
+                        <div class="flex-1">
+                            <h3 class="font-bold text-gray-800 text-sm mb-1">경북 청송 꿀사과 10kg</h3>
+                            <p class="text-xs text-gray-500 mb-1">받는분: ${order.name} | ${order.address}</p>
+                            <div class="flex justify-between items-center mt-2">
+                                <span class="text-xs bg-red-50 text-red-500 px-1 rounded border border-red-100">${order.quantity}박스</span>
+                                <span class="font-bold text-gray-800">${parseInt(order.total_price || 0).toLocaleString()}원</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                listElement.appendChild(li);
+            });
+        }
+
+        function clearLocalHistory() {
+            if(confirm('로컬 저장소의 주문 기록을 모두 삭제하시겠습니까? (서버 데이터는 유지됩니다)')) {
+                localStorage.removeItem('appleOrders');
+                loadOrders();
+            }
+        }
+        
+        function refreshOrders() {
+            loadOrders();
+        }
+
+        // ==========================================
+        // 4. 관리자 모드
+        // ==========================================
+        const ADMIN_PASSWORD = '6763';
+
+        function openAdminModal() {
+            document.getElementById('adminModal').classList.remove('hidden');
+            document.getElementById('adminPassword').value = '';
+            document.getElementById('adminPassword').focus();
+        }
+
+        function closeAdminModal() {
+            document.getElementById('adminModal').classList.add('hidden');
+        }
+
+        function checkAdminPassword() {
+            const input = document.getElementById('adminPassword').value;
+            if (input === ADMIN_PASSWORD) {
+                closeAdminModal();
+                openAdminPage();
+            } else {
+                alert('비밀번호가 틀렸습니다.');
+            }
+        }
+
+        // 엔터키로 비밀번호 확인
+        document.getElementById('adminPassword').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') checkAdminPassword();
+        });
+
+        function openAdminPage() {
+            document.getElementById('adminPage').classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+            loadAdminOrders();
+        }
+
+        function closeAdminPage() {
+            document.getElementById('adminPage').classList.add('hidden');
+            document.body.style.overflow = '';
+        }
+
+        async function loadAdminOrders() {
+            const listElement = document.getElementById('adminOrderList');
+            listElement.innerHTML = '<div class="text-center py-8"><i class="fa-solid fa-spinner fa-spin text-green-500 text-2xl"></i><p class="mt-2 text-gray-500">불러오는 중...</p></div>';
+
+            let orders = [];
+
+            if (supabase) {
+                const { data, error } = await supabase
+                    .from(TABLE_NAME)
+                    .select('*')
+                    .order('created_at', { ascending: false });
+
+                if (!error && data) {
+                    orders = data;
+                }
+            }
+
+            if (orders.length === 0) {
+                orders = JSON.parse(localStorage.getItem('appleOrders')) || [];
+            }
+
+            renderAdminOrderList(orders);
+        }
+
+        function renderAdminOrderList(orders) {
+            const listElement = document.getElementById('adminOrderList');
+            listElement.innerHTML = '';
+
+            if (orders.length === 0) {
+                listElement.innerHTML = '<div class="text-center py-8 text-gray-400 bg-gray-50 rounded">주문 내역이 없습니다.</div>';
+                return;
+            }
+
+            // 통계 표시
+            const totalOrders = orders.length;
+            const totalBoxes = orders.reduce((sum, o) => sum + (o.quantity || 0), 0);
+            const totalRevenue = orders.reduce((sum, o) => sum + (o.total_price || 0), 0);
+
+            const statsDiv = document.createElement('div');
+            statsDiv.className = 'grid grid-cols-3 gap-2 mb-4';
+            statsDiv.innerHTML = `
+                <div class="bg-blue-50 p-3 rounded text-center">
+                    <p class="text-xs text-blue-600">총 주문</p>
+                    <p class="font-bold text-blue-800">${totalOrders}건</p>
+                </div>
+                <div class="bg-green-50 p-3 rounded text-center">
+                    <p class="text-xs text-green-600">총 수량</p>
+                    <p class="font-bold text-green-800">${totalBoxes}박스</p>
+                </div>
+                <div class="bg-red-50 p-3 rounded text-center">
+                    <p class="text-xs text-red-600">총 매출</p>
+                    <p class="font-bold text-red-800">${totalRevenue.toLocaleString()}원</p>
+                </div>
+            `;
+            listElement.appendChild(statsDiv);
+
+            // 주문 목록
+            orders.forEach((order, index) => {
+                const displayDate = order.created_at ? new Date(order.created_at).toLocaleString() : '날짜정보없음';
+
+                const div = document.createElement('div');
+                div.className = 'bg-white border border-gray-200 rounded p-4 shadow-sm';
+                div.innerHTML = `
+                    <div class="flex justify-between items-start mb-2">
+                        <span class="bg-gray-800 text-white text-xs px-2 py-1 rounded font-bold">#${totalOrders - index}</span>
+                        <span class="text-xs text-gray-500">${displayDate}</span>
+                    </div>
+                    <div class="space-y-1 text-sm">
+                        <p><span class="text-gray-500">이름:</span> <strong>${order.name}</strong></p>
+                        <p><span class="text-gray-500">주소:</span> ${order.address}</p>
+                        <p><span class="text-gray-500">수량:</span> <span class="text-red-500 font-bold">${order.quantity}박스</span></p>
+                        <p><span class="text-gray-500">금액:</span> <span class="font-bold">${parseInt(order.total_price || 0).toLocaleString()}원</span></p>
+                    </div>
+                `;
+                listElement.appendChild(div);
+            });
+        }
+
+    </script>
+</body>
+</html>
