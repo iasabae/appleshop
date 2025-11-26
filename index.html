@@ -158,7 +158,8 @@
                 <!-- 휴대폰 번호 -->
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">휴대폰 번호 <span class="text-red-500">*</span></label>
-                    <input type="tel" id="userPhone" required placeholder="010-1234-5678"
+                    <input type="tel" id="userPhone" required placeholder="010-1234-5678" maxlength="13"
+                           oninput="formatPhoneNumber(this)"
                            class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:border-g-green transition">
                 </div>
 
@@ -248,6 +249,23 @@
         function updatePrice(qty) {
             const total = qty * UNIT_PRICE;
             priceDisplay.innerText = total.toLocaleString();
+        }
+
+        // 전화번호 자동 포맷팅
+        function formatPhoneNumber(input) {
+            let value = input.value.replace(/[^0-9]/g, '');
+
+            if (value.length > 11) {
+                value = value.slice(0, 11);
+            }
+
+            if (value.length > 7) {
+                value = value.slice(0, 3) + '-' + value.slice(3, 7) + '-' + value.slice(7);
+            } else if (value.length > 3) {
+                value = value.slice(0, 3) + '-' + value.slice(3);
+            }
+
+            input.value = value;
         }
 
         // ==========================================
@@ -528,12 +546,16 @@
             // 주문 목록
             orders.forEach((order, index) => {
                 const displayDate = order.created_at ? new Date(order.created_at).toLocaleString() : '날짜정보없음';
+                const isPaid = order.is_paid || false;
 
                 const div = document.createElement('div');
-                div.className = 'bg-white border border-gray-200 rounded p-4 shadow-sm';
+                div.className = `bg-white border rounded p-4 shadow-sm ${isPaid ? 'border-green-400 bg-green-50' : 'border-gray-200'}`;
                 div.innerHTML = `
                     <div class="flex justify-between items-start mb-2">
-                        <span class="bg-gray-800 text-white text-xs px-2 py-1 rounded font-bold">#${totalOrders - index}</span>
+                        <div class="flex items-center gap-2">
+                            <span class="bg-gray-800 text-white text-xs px-2 py-1 rounded font-bold">#${totalOrders - index}</span>
+                            ${isPaid ? '<span class="bg-green-500 text-white text-xs px-2 py-1 rounded font-bold">입금완료</span>' : '<span class="bg-yellow-500 text-white text-xs px-2 py-1 rounded font-bold">입금대기</span>'}
+                        </div>
                         <span class="text-xs text-gray-500">${displayDate}</span>
                     </div>
                     <div class="space-y-1 text-sm">
@@ -543,9 +565,71 @@
                         <p><span class="text-gray-500">수량:</span> <span class="text-red-500 font-bold">${order.quantity}박스</span></p>
                         <p><span class="text-gray-500">금액:</span> <span class="font-bold">${parseInt(order.total_price || 0).toLocaleString()}원</span></p>
                     </div>
+                    <div class="mt-3 pt-3 border-t flex gap-2">
+                        ${isPaid
+                            ? `<button onclick="togglePaidStatus(${order.id}, false)" class="flex-1 text-sm bg-gray-400 text-white py-2 rounded hover:bg-gray-500"><i class="fa-solid fa-xmark"></i> 입금확인 취소</button>`
+                            : `<button onclick="togglePaidStatus(${order.id}, true)" class="flex-1 text-sm bg-green-500 text-white py-2 rounded hover:bg-green-600"><i class="fa-solid fa-check"></i> 입금확인</button>`
+                        }
+                        <button onclick="deleteOrder(${order.id}, '${order.name}')" class="text-sm bg-red-500 text-white px-3 py-2 rounded hover:bg-red-600"><i class="fa-solid fa-trash"></i></button>
+                    </div>
                 `;
                 listElement.appendChild(div);
             });
+        }
+
+        // 입금 상태 토글 함수
+        async function togglePaidStatus(orderId, isPaid) {
+            if (supabase) {
+                const { error } = await supabase
+                    .from(TABLE_NAME)
+                    .update({ is_paid: isPaid })
+                    .eq('id', orderId);
+
+                if (error) {
+                    console.error('입금상태 업데이트 오류:', error);
+                    alert('상태 변경에 실패했습니다.');
+                    return;
+                }
+            } else {
+                // 로컬 스토리지 업데이트
+                const localOrders = JSON.parse(localStorage.getItem('appleOrders')) || [];
+                const orderIndex = localOrders.findIndex(o => o.id === orderId);
+                if (orderIndex !== -1) {
+                    localOrders[orderIndex].is_paid = isPaid;
+                    localStorage.setItem('appleOrders', JSON.stringify(localOrders));
+                }
+            }
+
+            // 목록 새로고침
+            loadAdminOrders();
+        }
+
+        // 주문 삭제 함수
+        async function deleteOrder(orderId, orderName) {
+            if (!confirm(`"${orderName}"님의 주문을 정말 삭제하시겠습니까?\n\n삭제된 데이터는 복구할 수 없습니다.`)) {
+                return;
+            }
+
+            if (supabase) {
+                const { error } = await supabase
+                    .from(TABLE_NAME)
+                    .delete()
+                    .eq('id', orderId);
+
+                if (error) {
+                    console.error('주문 삭제 오류:', error);
+                    alert('삭제에 실패했습니다.');
+                    return;
+                }
+            } else {
+                // 로컬 스토리지에서 삭제
+                let localOrders = JSON.parse(localStorage.getItem('appleOrders')) || [];
+                localOrders = localOrders.filter(o => o.id !== orderId);
+                localStorage.setItem('appleOrders', JSON.stringify(localOrders));
+            }
+
+            alert('삭제되었습니다.');
+            loadAdminOrders();
         }
 
         // CSV 다운로드 함수
