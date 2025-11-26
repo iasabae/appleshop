@@ -127,7 +127,12 @@
                 </div>
                 <div class="bg-yellow-50 p-3 rounded text-sm text-gray-700 mt-3 border border-yellow-200">
                     <p class="font-bold mb-1">💳 입금계좌</p>
-                    <p class="text-base font-bold text-gray-800">카카오뱅크 3333-12-9026133</p>
+                    <div class="flex items-center gap-2">
+                        <p class="text-base font-bold text-gray-800">카카오뱅크 3333-12-9026133</p>
+                        <button onclick="copyAccount()" class="text-xs bg-yellow-200 hover:bg-yellow-300 px-2 py-1 rounded text-yellow-800">
+                            <i class="fa-regular fa-copy"></i> 복사
+                        </button>
+                    </div>
                     <p class="text-xs text-gray-500">예금주: 이윤서</p>
                 </div>
             </div>
@@ -141,7 +146,14 @@
                 <!-- 이름 -->
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">받는 분 성함 <span class="text-red-500">*</span></label>
-                    <input type="text" id="userName" required placeholder="홍길동" 
+                    <input type="text" id="userName" required placeholder="홍길동"
+                           class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:border-g-green transition">
+                </div>
+
+                <!-- 휴대폰 번호 -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">휴대폰 번호 <span class="text-red-500">*</span></label>
+                    <input type="tel" id="userPhone" required placeholder="010-1234-5678"
                            class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:border-g-green transition">
                 </div>
 
@@ -247,14 +259,16 @@
 
             // 1. 폼 데이터 수집
             const name = document.getElementById('userName').value;
+            const phone = document.getElementById('userPhone').value;
             const address = document.getElementById('userAddress').value;
             const qty = parseInt(document.getElementById('boxQty').value);
             const totalPrice = qty * UNIT_PRICE;
             const date = new Date().toLocaleString();
-            
+
             const newOrder = {
                 id: Date.now(), // 로컬용 유니크 ID
                 name: name,
+                phone: phone,
                 address: address,
                 quantity: qty,
                 total_price: totalPrice,
@@ -285,9 +299,10 @@
                     const { data, error } = await supabase
                         .from(TABLE_NAME)
                         .insert([
-                            { 
-                                name: orderData.name, 
-                                address: orderData.address, 
+                            {
+                                name: orderData.name,
+                                phone: orderData.phone,
+                                address: orderData.address,
                                 quantity: orderData.quantity,
                                 total_price: orderData.total_price
                             }
@@ -350,7 +365,8 @@
             orders.forEach(order => {
                 // Supabase 데이터의 created_at은 ISO string일 수 있으므로 포맷팅 처리 필요할 수 있음
                 // 여기선 간단하게 처리
-                const displayDate = order.created_at ? new Date(order.created_at).toLocaleDateString() : '날짜정보없음';
+                const orderDate = order.created_at ? new Date(order.created_at) : null;
+                const displayDate = orderDate ? `${orderDate.toLocaleDateString()} ${orderDate.getHours().toString().padStart(2,'0')}:${orderDate.getMinutes().toString().padStart(2,'0')}` : '날짜정보없음';
                 const maskedName = maskName(order.name);
 
                 const li = document.createElement('li');
@@ -387,6 +403,23 @@
         
         function refreshOrders() {
             loadOrders();
+        }
+
+        // 계좌번호 복사 함수
+        function copyAccount() {
+            const accountInfo = '카카오뱅크 3333-12-9026133';
+            navigator.clipboard.writeText(accountInfo).then(() => {
+                alert('계좌번호가 복사되었습니다!');
+            }).catch(() => {
+                // 폴백: 구형 브라우저 지원
+                const temp = document.createElement('input');
+                temp.value = accountInfo;
+                document.body.appendChild(temp);
+                temp.select();
+                document.execCommand('copy');
+                document.body.removeChild(temp);
+                alert('계좌번호가 복사되었습니다!');
+            });
         }
 
         // ==========================================
@@ -499,6 +532,7 @@
                     </div>
                     <div class="space-y-1 text-sm">
                         <p><span class="text-gray-500">이름:</span> <strong>${order.name}</strong></p>
+                        <p><span class="text-gray-500">연락처:</span> ${order.phone || '-'}</p>
                         <p><span class="text-gray-500">주소:</span> ${order.address}</p>
                         <p><span class="text-gray-500">수량:</span> <span class="text-red-500 font-bold">${order.quantity}박스</span></p>
                         <p><span class="text-gray-500">금액:</span> <span class="font-bold">${parseInt(order.total_price || 0).toLocaleString()}원</span></p>
